@@ -131,8 +131,8 @@ namespace TorchadeV2
 
         private void CreateRenderTargetView()
         {
-            _backBuffer.Dispose();
-            _renderTargetView.Dispose();
+            _backBuffer?.Dispose();
+            _renderTargetView?.Dispose();
 
             _backBuffer = _swapChain.GetBuffer<ID3D11Texture2D>(0);
             _renderTargetView = _device.CreateRenderTargetView(_backBuffer);
@@ -153,8 +153,8 @@ namespace TorchadeV2
 
             // Release references to swap chain buffers
             _context.ClearState();
-            _renderTargetView.Dispose();
-            _backBuffer.Dispose();
+            _renderTargetView?.Dispose();
+            _backBuffer?.Dispose();
 
             _swapChain.ResizeBuffers(
                 2,
@@ -177,7 +177,7 @@ namespace TorchadeV2
             try
             {
                 _context.OMSetRenderTargets(_renderTargetView, null);
-                _context.ClearRenderTargetView(_renderTargetView, new Color4(0.0f, 0.0f, 0.0f, 1.0f));
+                _context.ClearRenderTargetView(_renderTargetView, new Color4(1.0f, 0.0f, 0.0f, 1.0f));
 
                 // CODE
 
@@ -193,17 +193,11 @@ namespace TorchadeV2
         {
             isInitialized = false;
 
-            _renderTargetView.Dispose();
-            _backBuffer.Dispose();
-            _swapChain.Dispose();
-            _context.Dispose();
-            _device.Dispose();
-            
-            _renderTargetView = null;
-            _backBuffer = null;
-            _swapChain = null;
-            _context = null;
-            _device = null;
+            _renderTargetView?.Dispose();
+            _backBuffer?.Dispose();
+            _swapChain?.Dispose();
+            _context?.Dispose();
+            _device?.Dispose();
         }
 
         #region Win32 API Imports

@@ -14,10 +14,6 @@
             <Button Content="Button 3" Height="40" Margin="0 5"/>
         </StackPanel>
 
-        <Border Background="Orange"
-                BorderBrush="Black"
-                BorderThickness="2">
-
-        </Border>
+        <local:TorchadeHwndHost x:Name="dxHost" Width="640" Height="480" />
     </DockPanel>
 </Window>
