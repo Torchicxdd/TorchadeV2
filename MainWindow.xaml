@@ -7,13 +7,15 @@
         mc:Ignorable="d"
         Title="Torchade" Height="450" Width="800">
     <DockPanel>
-
         <StackPanel DockPanel.Dock="Right" Width="150" Margin="10">
-            <Button Content="Button 1" Height="40" Margin="0 5" />
+            <Button x:Name="startCaptureButton" Content="Start Capture" 
+                Height="40" Margin="0 5" Click="StartCaptureButton_Click" />
             <Button Content="Button 2" Height="40" Margin="0 5"/>
             <Button Content="Button 3" Height="40" Margin="0 5"/>
         </StackPanel>
 
-        <local:TorchadeHwndHost x:Name="dxHost" Width="640" Height="480" />
+        <Viewbox Stretch="Uniform">
+            <Grid x:Name="hostContainer" Width="1920" Height="1080"/>
+        </Viewbox>
     </DockPanel>
 </Window>

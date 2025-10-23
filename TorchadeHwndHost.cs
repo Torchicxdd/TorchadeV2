@@ -6,6 +6,8 @@ using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Vortice.Mathematics;
+using Windows.ApplicationModel.Core;
+using Windows.UI.Core;
 
 namespace TorchadeV2
 {
@@ -16,16 +18,8 @@ namespace TorchadeV2
         private const int WS_VISIBLE = 0x10000000;
         private const int HOST_ID = 0x00000002;
 
-        private ID3D11Device _device;
-        private ID3D11DeviceContext _context;
-        private IDXGISwapChain1 _swapChain;
-        private ID3D11RenderTargetView _renderTargetView;
-        private ID3D11Texture2D _backBuffer;
-
-        public ID3D11Device Device => _device;
-        public ID3D11DeviceContext Context => _context;
-
-        private bool isInitialized = false;
+        private Renderer _renderer;
+        private RenderLoop _renderLoop;
 
         protected override HandleRef BuildWindowCore(HandleRef hwndParent)
         {
@@ -41,163 +35,42 @@ namespace TorchadeV2
                 IntPtr.Zero,
                 IntPtr.Zero);
 
-            InitializeDirectX();
+            _renderer = new Renderer();
+
+            try
+            {
+                _renderer.InitializeDirectX(_hwndHost, (int)Width, (int)Height);
+
+                _renderLoop = new RenderLoop(_renderer.Render);
+                _renderLoop.Start();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DirectX initialization failed: {ex.Message}");
+                _renderer?.Dispose();
+                _renderer = null;
+            }
 
             return new HandleRef(this, _hwndHost);
         }
 
         protected override void DestroyWindowCore(HandleRef hwnd)
         {
-            CleanUpDirectX();
+            _renderLoop?.Dispose();
+            _renderer?.Dispose();
             DestroyWindow(_hwndHost);
         }
 
         protected override nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
         {
             const int WM_SIZE = 0x0005;
-            const int WM_PAINT = 0x000F;
 
-            switch (msg)
+            if (msg == WM_SIZE && _renderer != null)
             {
-                case WM_SIZE:
-                    OnResize();
-                    break;
-                case WM_PAINT:
-                    Render();
-                    break;
+                _renderer.Resize((int)Width, (int)Height);
             }
 
             return base.WndProc(hwnd, msg, wParam, lParam, ref handled);
-        }
-
-        private void InitializeDirectX()
-        {
-            if (_hwndHost == IntPtr.Zero)
-            {
-                return;
-            }
-
-            try
-            {
-                var featureLevels = new[]
-                {
-                    FeatureLevel.Level_11_1,
-                    FeatureLevel.Level_11_0,
-                    FeatureLevel.Level_10_1,
-                    FeatureLevel.Level_10_0,
-                };
-
-                D3D11.D3D11CreateDevice(
-                    null,
-                    DriverType.Hardware,
-                    DeviceCreationFlags.BgraSupport,
-                    featureLevels,
-                    out _device,
-                    out var selectedFeatureLevel,
-                    out _context);
-
-                using var dxgiDevice = _device.QueryInterface<IDXGIDevice>();
-                using var adapter = dxgiDevice.GetAdapter();
-                using var factory = adapter.GetParent<IDXGIFactory2>();
-
-                SwapChainDescription1 swapChainDesc = new SwapChainDescription1
-                {
-                    Width = (uint)Width,
-                    Height = (uint)Height,
-                    Format = Format.B8G8R8A8_UNorm,
-                    BufferCount = 2,
-                    BufferUsage = Usage.RenderTargetOutput,
-                    SampleDescription = new SampleDescription(1, 0),
-                    Scaling = Scaling.Stretch,
-                    SwapEffect = SwapEffect.FlipDiscard,
-                    AlphaMode = AlphaMode.Ignore
-                };
-
-                _swapChain = factory.CreateSwapChainForHwnd(_device, _hwndHost, swapChainDesc);
-
-                factory.MakeWindowAssociation(_hwndHost, WindowAssociationFlags.IgnoreAltEnter);
-
-                CreateRenderTargetView();
-                SetViewport();
-
-                isInitialized = true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"DirectX initialization failed: {ex.Message}");
-                CleanUpDirectX();
-            }
-        }
-
-        private void CreateRenderTargetView()
-        {
-            _backBuffer?.Dispose();
-            _renderTargetView?.Dispose();
-
-            _backBuffer = _swapChain.GetBuffer<ID3D11Texture2D>(0);
-            _renderTargetView = _device.CreateRenderTargetView(_backBuffer);
-        }
-
-        private void SetViewport()
-        {
-            var viewport = new Viewport(0, 0, (float)Width, (float)Height, 0.0f, 1.0f);
-            _context.RSSetViewport(viewport);
-        }
-
-        private void OnResize()
-        {
-            if (!isInitialized || _swapChain == null)
-            {
-                return;
-            }
-
-            // Release references to swap chain buffers
-            _context.ClearState();
-            _renderTargetView?.Dispose();
-            _backBuffer?.Dispose();
-
-            _swapChain.ResizeBuffers(
-                2,
-                (uint)Width,
-                (uint)Height,
-                Format.B8G8R8A8_UNorm,
-                SwapChainFlags.None);
-
-            CreateRenderTargetView();
-            SetViewport();
-        }
-
-        private void Render()
-        {
-            if (!isInitialized || _context == null)
-            {
-                return;
-            }
-
-            try
-            {
-                _context.OMSetRenderTargets(_renderTargetView, null);
-                _context.ClearRenderTargetView(_renderTargetView, new Color4(1.0f, 0.0f, 0.0f, 1.0f));
-
-                // CODE
-
-                _swapChain.Present(1, PresentFlags.None);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Render error: {ex.Message}");
-            }
-        }
-
-        private void CleanUpDirectX()
-        {
-            isInitialized = false;
-
-            _renderTargetView?.Dispose();
-            _backBuffer?.Dispose();
-            _swapChain?.Dispose();
-            _context?.Dispose();
-            _device?.Dispose();
         }
 
         #region Win32 API Imports
